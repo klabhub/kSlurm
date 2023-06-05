@@ -131,6 +131,10 @@ dctSchedulerMessage(5, '%s: Using %s as log file', currFilename, quotedLogFile);
 
 jobName = sprintf('Job%d', job.ID);
 
+% Retrieve the job-specific environemnt variables, and add those
+jobEnv = cellfun(@getenv,job.EnvironmentVariables,'uni',false);
+variables = cat(1,variables,cat(2,job.EnvironmentVariables',jobEnv'))';
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CUSTOMIZATION MAY BE REQUIRED %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

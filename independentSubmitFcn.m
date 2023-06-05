@@ -122,6 +122,10 @@ copyfile(localScript, localJobDirectory, 'f');
 wrapperPath = sprintf('%s%s%s', jobDirectoryOnCluster, fileSeparator, jobWrapperName);
 quotedWrapperPath = sprintf('%s%s%s', quote, wrapperPath, quote);
 
+% Retrieve the job-specific environemnt variables, and add those
+jobEnv = cellfun(@getenv,job.EnvironmentVariables,'uni',false);
+variables = cat(1,variables,cat(2,job.EnvironmentVariables',jobEnv'))';
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CUSTOMIZATION MAY BE REQUIRED %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
