@@ -14,31 +14,9 @@ What you should do:
 
 1. Clone this repository to your workstation (you can pick any folder):
 
-    ```git clone https://github.com/klabhub/matlab-parallel-amarel-plugin 'c:\github\matlab-parallel-amarel-plugin'```
+    ```git clone https://github.com/klabhub/kSlurm 'c:\github\kSlurm'```
+1. Start Matlab and open tutorial1.mlx
 
-1. Start Matlab and add the repo folder to your path:
-```addpath('c:\gitub\matlab-parallel-amarel-plugin')```
 
-1. Save the path for future sessions:
-
-    ```savepath```
-
-1. Set your preferences for connection to the cluster
-    Adjust these to your needs:
-
-    `
-    kSlurm.setpref('user','bart',...
-                    'identityFile','c:/keys/amarel_private',...
-                    'host','amareln.hpc.rutgers.edu',...
-        'remoteStorage','/scratch/bart/jobStorage',...
-        'matlabRoot','/opt/sw/packages/MATLAB/R2022a')
-    `
-    
-    Note that the version of Matlab on your workstation should match the one you use on the cluster (here R2022a).
-1. In Matlab try to connect (For the Amarel cluster you need to be on the Rutgers network, use a VPN from home). You should see some information on the partitions and nodes on Amarel.
-
-    ```c = kSlurm```
-
-1. Work your way through these demos (in the demos folder) to see some typical use scenarios:
-
-    ```batchDemo.m```, ```parfevalOnAllDemo.m```,```parforDemo. m```
+Bart Krekelberg
+June 2023

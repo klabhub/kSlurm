@@ -9,12 +9,12 @@
 % We are going to run this parfor on 10 workers on the cluster.
 %
 % This assumes that you have alread set your preferences as explained in
-% the README.md.
+% the tutorial.mlx.
 %
 % Setup a kSlurm object that allows 20 minutes of prcessing on 11 workers (we need 1
 % more worker than members of the parpool). I am asking for 20 minutes just
-% to be safe (Matlab startup can take a while sometimes).
-c=kSlurm('nrWorkers',11,'hours',0,'minutes',20);
+% to be safe.
+c=kSlurm('NumWorkers',11,'Hours',0,'Minutes',20);
 % Use the script function to run the wave script on a parpool of 10 workers
 % Note that the wave script is autoamtically copied to the cluster.
 job = script(c,'wave','Pool',10);
@@ -31,7 +31,7 @@ job = script(c,'wave','Pool',10);
 % first save the kSlurm object as a profile
 % (saveAsProfile(c,'profileName').) Note that each setting (e.g., wall
 % time) will need to be stored as a separate profile. Some naming scheme
-% would be helpful to keep track of these).
+% would be helpful to keep track of these.  
 %
 % In my epxerience the 'Pending' status is not always accurate, and the
 % updates are very slow. Running squeue or sacct on the cluster command line

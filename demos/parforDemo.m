@@ -24,15 +24,15 @@
 % cluster has access to the same code (and data files) that should then
 % work seamlessly.
 % 
-% See also parforOptions
+% See also kSlurm.parforOpts , parforOptions
 
 % Setup the object 
-c=kSlurm('nrWorkers',10,'hours',0,'minutes',20);
+c=kSlurm('NumWorkers',10,'Hours',0,'Minutes',20);
 
 % Request a ClusterOptions object from the kSlurm  object.
 % Use the options function to include some of the kSlurm defaults.
 % In principle parforOptions(c) works too.
-opts = options(c);  % This will request all available workers in 'c'. (Testing suggests it may request more...?)
+opts = parforOpts(c);  % This will request all available workers in 'c'. (Testing suggests it may request more...?)
 
 % Now we can write a parfor that uses those workers
 % This is a blocking call and will finish once all iterations are complete

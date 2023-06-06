@@ -3,17 +3,18 @@ classdef kSlurm < parallel.cluster.Generic
     % simplify connecting and submitting jobs from a Windows client to a
     % SLURM cluster.
     %
-    % 
+    %
     % BK - June 2023
 
     properties (Constant)
         PREFGRP = "kSlurm"  % Group that stores string preferences for kSlurm
-        PREFS   = ["user","identityFile","host","remoteStorage","matlabRoot"];
+        PREFS   = ["User","IdentityFile","Host","RemoteStorage","MatlabRoot"];
     end
 
     properties (SetAccess = public)
         batchDefaults =struct('CaptureDiary',true,'CurrentFolder','.'); % Batch only
         jobDefaults = struct('AutoAttachFiles',false,'AutoAddClientPath',false);
+
 
         gitFolders  (1,:) cell = {}
     end
@@ -26,14 +27,14 @@ classdef kSlurm < parallel.cluster.Generic
 
     end
 
-  
+
     methods
 
     end
 
     methods (Access=public)
 
-   
+
         function [status,stdout] = runCommand(c,cmd)
             % Run any unix command (cmd) on the cluster head node.
             % OUTPUT
@@ -110,7 +111,7 @@ classdef kSlurm < parallel.cluster.Generic
             % git). Other than that this function works the same as the
             % regular batch and can be given the same input arguments.
             %
-            % Note that 'EnvironmentVariables' passed here are just a list of 
+            % Note that 'EnvironmentVariables' passed here are just a list of
             % environment variable names ; they are evaluated at
             % the time of submission, on the client. This differs from the
             % EnvironmentVariables set at construction of the kSlurm
@@ -199,68 +200,67 @@ classdef kSlurm < parallel.cluster.Generic
             % identityFile - Full path SSH Keyfile (without a passphrase) [getpref('identityFile')]
             %
             % Ohter input arguments are optional parameter/value pairs:
-            % hours      - The requested wall time hours    [1]
-            % muinutes   - The requested wall time minutes  [0]
-            % nrThreads  - Number threads per worker      [1]
-            % nrWorkers - The maximum number of workers that can be requested [10]
-            % host      - The host name or ip address of the cluster [getpref('host')]
-            % remoteStorage - The location where job files will be stored [getpref('remoteStorage']
-            % matlabRoot  - The Root of the Matlab installation on the cluster. [getpref('matlabRoot')]
-            % sbatchOptions - A string with additional options to pass to
+            % Hours      - The requested wall time hours    [1]
+            % Muinutes   - The requested wall time minutes  [0]
+            % NumThreads  - Number threads per worker      [1]
+            % NumWorkers - The maximum number of workers that can be requested [10]
+            % Host      - The host name or ip address of the cluster [getpref('host')]
+            % RemoteStorage - The location where job files will be stored [getpref('remoteStorage']
+            % MatlabRoot  - The Root of the Matlab installation on the cluster. [getpref('matlabRoot')]
+            % SbatchOptions - A string with additional options to pass to
             % sbatch [""]. This is where you can specify memory request,
             % gpus etc. See the sbatch documentation for the list of input
-            % arguments.           
-            % environmentVariables - struct with environment variables.
+            % arguments.
+            % EnvironmentVariables - struct with environment variables.
             %                   Each struct field should contain the value
             %                   (a string) of the environment variables.
             %                   These envs will be used for all
             %                   workers/jobs. The fun/script/parforOpts
             %                   functions can specify additional
             %                   environment variables.
-            % startupFolder - Folder (on the cluster) where the
+            % StartupFolder - Folder (on the cluster) where the
             % workers will start (using the -sd command line argument). Use
             % this to execute a startup.m file in that folder (for instance
             % to set the path).
-            %                   
-            % debug -  Set to true to run in debug mode [false]
+            %
+            % AdditionalPaths - Cell array with paths to add to the search
+            %                   path for each job.
+            %
+            % Debug -  Set to true to run in debug mode [false]
+            % SInfo - Set to false to skip the sinfo output.
             % OUTPUT
             % c -  The kSlurm Cluster object
             %
             % EXAMPLE
             % This can be called every session, with appropriate resource requests and
             % then used to create a parpool
-            %  c = kSlurm('bart','path/to/file/bart_amareln_rsa','hours',1)
+            %  c = kSlurm('bart','path/to/file/bart_amareln_rsa','Hours',1)
             %
             % Or, you can save the output as a named cluster profile, which can then be selected from the Parallel
             % button in the Command Window in future sessions
             %  saveAsProfile(c,'1 hour')
             %
-            % NOTES
-            % - because Matlab uses multithreading for some of its basic computations
-            % having more than 1 thread per worker could speed up things, but each thread
-            % is a core, so the resources oneis requesting goes up as
-            % (nrWorkers*nrThreads). For any given application testing whether the
-            % additional threads are "worth it" is advised.
-            %
             arguments
-                user  = kSlurm.getpref('user')
-                identityFile = kSlurm.getpref('identityFile')
-                pk.hours (1,1) double {mustBeInteger, mustBeInRange(pk.hours,0,24)} = 1
-                pk.minutes (1,1) double {mustBeInteger,mustBeInRange(pk.minutes,0,60)} = 0
-                pk.nrThreads (1,1) double {mustBeInteger,mustBeInRange(pk.nrThreads,1,64)} = 1
-                pk.nrWorkers (1,1) double {mustBeInteger,mustBePositive} = 10
-                pk.host (1,1) string = kSlurm.getpref('host');
-                pk.remoteStorage (1,1) string = kSlurm.getpref('remoteStorage')
-                pk.matlabRoot (1,1) string = kSlurm.getpref('matlabRoot')
-                pk.sbatchOptions (1,1) string =""
-                pk.debug (1,1) logical =false
-                pk.environmentVariables struct = struct([]);
-                pk.startupFolder (1,1) string = ""
+                user  = kSlurm.getpref('User')
+                identityFile = kSlurm.getpref('IdentityFile')
+                pk.Hours (1,1) double {mustBeInteger, mustBeInRange(pk.Hours,0,24)} = 1
+                pk.Minutes (1,1) double {mustBeInteger,mustBeInRange(pk.Minutes,0,60)} = 0
+                pk.NumThreads (1,1) double {mustBeInteger,mustBeInRange(pk.NumThreads,1,64)} = 1
+                pk.NumWorkers (1,1) double {mustBeInteger,mustBePositive} = 128
+                pk.Host (1,1) string = kSlurm.getpref('Host');
+                pk.RemoteStorage (1,1) string = kSlurm.getpref('RemoteStorage')
+                pk.MatlabRoot (1,1) string = kSlurm.getpref('MatlabRoot')
+                pk.SbatchOptions (1,1) string =""
+                pk.EnvironmentVariables struct = struct([])
+                pk.StartupFolder (1,1) string = ""
+                pk.AdditionalPaths (1,:) cell = {}
+                pk.Debug (1,1) logical =false
+                pk.SInfo (1,1) logical = true
             end
-            if pk.matlabRoot==""
+            if pk.MatlabRoot==""
                 clientVersion = ver('matlab').Release;
                 clientVersion = clientVersion(2:end-1);
-                pk.matlabRoot = sprintf('/opt/sw/packages/MATLAB/%s',clientVersion);
+                pk.NatlabRoot = sprintf('/opt/sw/packages/MATLAB/%s',clientVersion);
             end
 
             jobName= [getenv('COMPUTERNAME') '-MCP']; % Named the job after the submitting machine
@@ -268,41 +268,49 @@ classdef kSlurm < parallel.cluster.Generic
 
             %% Setup the cluster object
             c =c@parallel.cluster.Generic;
-            c.JobStorageLocation = struct('windows',localStorage,'unix',pk.remoteStorage);
-            c.NumThreads = pk.nrThreads;
-            c.NumWorkers = pk.nrWorkers;
-            c.ClusterMatlabRoot = pk.matlabRoot; % Has to match the client's matlab version
+            c.JobStorageLocation = struct('windows',localStorage,'unix',pk.RemoteStorage);
+            c.NumThreads = pk.NumThreads;
+            c.NumWorkers = pk.NumWorkers;
+            c.ClusterMatlabRoot = pk.MatlabRoot; % Has to match the client's matlab version
             c.OperatingSystem = 'unix';
             c.HasSharedFilesystem = false;
             c.PluginScriptsLocation = fileparts(mfilename('fullpath'));
-            c.AdditionalProperties.ClusterHost = pk.host;
-            c.AdditionalProperties.RemoteJobStorageLocation =pk.remoteStorage;
+            c.AdditionalProperties.ClusterHost = pk.Host;
+            c.AdditionalProperties.RemoteJobStorageLocation =pk.RemoteStorage;
             c.AdditionalProperties.Username = user;
             c.AdditionalProperties.IdentityFile = identityFile;
             c.AdditionalProperties.IdentityFileHasPassphrase = false;
-            c.AdditionalProperties.EnableDebug = pk.debug;            
-            c.AdditionalProperties.AdditionalSubmitArgs = pk.sbatchOptions + sprintf("-t %02d:%02d:00 --job-name %s",pk.hours, pk.minutes,jobName);
+            c.AdditionalProperties.EnableDebug = pk.Debug;
+            c.AdditionalProperties.AdditionalSubmitArgs = pk.SbatchOptions + sprintf("-t %02d:%02d:00 --job-name %s",pk.Hours, pk.Minutes,jobName);
 
             % kSlurm specific additions - processedin the submitFcns
-            c.UserData  =struct('EnvironmentVariables',pk.environmentVariables, ...
-                                'StartupFolder',pk.startupFolder);
-            
-    
+            c.UserData  =struct('EnvironmentVariables',pk.EnvironmentVariables, ...
+                'StartupFolder',pk.StartupFolder);
 
-            % Try to connect and get some info on the cluster
-            fprintf('Trying to connect to  %s ...\n',  c.AdditionalProperties.ClusterHost)
-            fprintf('********************************\n')
-            fprintf('Partition and Node information: \n')
-            runCommand(c,'sinfo --format "%12P %.5a %.10l %.16F %m %20N"');
-            fprintf('********************************\n')            
+            if ~isempty(pk.AdditionalPaths)
+                c.jobDefaults.AdditionalPaths = pk.AdditionalPaths;
+            end
+            if any(cellfun(@isempty,{c.AdditionalProperties.ClusterHost,c.AdditionalProperties.Username,c.AdditionalProperties.IdentityFile}))
+                error('Host, User, and IdentityFile must be specified. See kSlurm.setpref how to set this up');
+            end
+
+            if pk.SInfo
+                % Try to connect and get some info on the cluster
+                fprintf('Trying to connect to  %s ...\n',  c.AdditionalProperties.ClusterHost)
+                fprintf('********************************\n')
+                fprintf('Partition and Node information: \n')
+                runCommand(c,'sinfo --format "%12P %.5a %.10l %.16F %m %20N"');
+                fprintf('********************************\n')
+            end
         end
         function delete(c)
-           
+
             try
-                 rc = getRemoteConnection(c);
+                rc = getRemoteConnection(c);
                 rc.disconnect
-            catch me
-                %Remote host may no longer be avaialbe
+            catch me %#ok<NASGU>
+
+                %Remote host may no longer be available, Silent fail.
             end
         end
     end
@@ -354,7 +362,15 @@ classdef kSlurm < parallel.cluster.Generic
         end
 
         function setpref(pref,value)
-            % Set one or more kSlurm preferences
+            % Set one or more kSlurm preferences. Use this to define the
+            % cluster host name, user, identity file and job storage.
+            % For instance:
+            % kSlurm.setpref('User','joe','IdentityFile','my_ssh_rsa',...
+            %               'Host','supercomputer.university.edu',...
+            %               'RemoteStorage','/scratch/joe/jobStorage')
+            % Those settings will persist across Matlab sessions (but not
+            % Matlab versions) and allow you to call kSlurm with fewer
+            % input arguments.
             arguments (Repeating)
                 pref
                 value

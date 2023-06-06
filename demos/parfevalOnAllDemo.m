@@ -9,7 +9,7 @@
 %
 % We want to run this on 20 workers.  (Note that this assumes preferences
 % have already been set to define the preferred cluster; see README.md)
-c=kSlurm('nrWorkers',21,'hours',0,'minutes',20);
+c=kSlurm('NumWorkers',21,'Hours',0,'Minutes',20);
 % The workers will call the pbench function with the input argument 10 (to run the benchmark 10 times)
 % and return 1 output.
 job = parfevalOnAll(c,@pbench,1,{10},'Pool',20,'AttachedFiles',{'pbench'});
@@ -24,6 +24,7 @@ tWorkers = results{1};  % 20 nodes time 10 repeats = 200 rows
 tWorkers = mean(tWorkers); % Average over all repeats
 
 % Compare the performance
+figure(1);clf;
 bar([tClient;tWorkers]');
 xticklabels({'LU','FFT','ODE','Sparse'});
 xlabel("Benchmark type");
@@ -37,7 +38,7 @@ legend({'Client',workerNames},'Location','bestoutside');
 % Part of the reason that the cluster does not do so well in the benchmarks is that the workers are single threaded.
 % Lets try this with multithreading on the cluster - asking for workers that
 % have 10 threads each
-c=kSlurm('nrWorkers',3,'hours',0,'minutes',20,'nrThreads',10);
+c=kSlurm('NumWorkers',3,'Hours',0,'Minutes',20,'NumThreads',10);
 job = parfevalOnAll(c,@pbench,1,{5},'Pool',1,'AttachedFiles',{'pbench'});
 results = fetchOutputs(job);
 tWorkers = results{1};
@@ -57,6 +58,7 @@ tWorkers = results{1};
 tWorkers = mean(tWorkers);
 
 % Compare the performance
+figure(2);clf;
 bar([tClient;tWorkers]');
 xticklabels({'LU','FFT','ODE','Sparse'});
 xlabel("Benchmark type");
