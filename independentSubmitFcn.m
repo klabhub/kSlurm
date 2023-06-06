@@ -71,6 +71,9 @@ end
 % Remove leading and trailing whitespace from the MATLAB arguments
 matlabArguments = strtrim(environmentProperties.MatlabArguments);
 
+% Add command line arguments specified at the cluster level
+matlabArguments = addCommandLineArguments(cluster,matlabArguments);
+
 % Where the workers store job output
 if cluster.HasSharedFilesystem
     storageLocation = environmentProperties.StorageLocation;
@@ -122,13 +125,13 @@ copyfile(localScript, localJobDirectory, 'f');
 wrapperPath = sprintf('%s%s%s', jobDirectoryOnCluster, fileSeparator, jobWrapperName);
 quotedWrapperPath = sprintf('%s%s%s', quote, wrapperPath, quote);
 
-% Retrieve the job-specific environemnt variables, and add those
-jobEnv = cellfun(@getenv,job.EnvironmentVariables,'uni',false);
-variables = cat(1,variables,cat(2,job.EnvironmentVariables',jobEnv'))';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CUSTOMIZATION MAY BE REQUIRED %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Combine variables, cluster level and job level environment
+variables = addEnvironmentVariables(variables,cluster,job);
+ 
 additionalSubmitArgs = sprintf('--ntasks=1 --cpus-per-task=%d', cluster.NumThreads);
 commonSubmitArgs = getCommonSubmitArgs(cluster);
 additionalSubmitArgs = strtrim(sprintf('%s %s', additionalSubmitArgs, commonSubmitArgs));

@@ -64,6 +64,9 @@ end
 % Remove leading and trailing whitespace from the MATLAB arguments
 matlabArguments = strtrim(environmentProperties.MatlabArguments);
 
+% Add command line arguments specified at the cluster level
+matlabArguments = addCommandLineArguments(cluster,matlabArguments);
+
 % Where the workers store job output
 if cluster.HasSharedFilesystem
     storageLocation = environmentProperties.StorageLocation;
@@ -130,14 +133,13 @@ quotedLogFile = sprintf('%s%s%s', quote, logFile, quote);
 dctSchedulerMessage(5, '%s: Using %s as log file', currFilename, quotedLogFile);
 
 jobName = sprintf('Job%d', job.ID);
-
-% Retrieve the job-specific environemnt variables, and add those
-jobEnv = cellfun(@getenv,job.EnvironmentVariables,'uni',false);
-variables = cat(1,variables,cat(2,job.EnvironmentVariables',jobEnv'))';
-
+    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CUSTOMIZATION MAY BE REQUIRED %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Combine variables, cluster level and job level environment
+variables = addEnvironmentVariables(variables,cluster,job);
+
 % You might want to customize this section to match your cluster,
 % for example to limit the number of nodes for a single job.
 additionalSubmitArgs = sprintf('--ntasks=%d --cpus-per-task=%d', environmentProperties.NumberOfTasks, cluster.NumThreads);

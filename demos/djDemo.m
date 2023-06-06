@@ -2,7 +2,7 @@
 % The variables djHost, djUser, djPass have to be set before calling any
 % code here. 
 
-c = kSlurm('hours',1,'nrWorkers',3);
+c = kSlurm('hours',1,'nrWorkers',10);
 % Folders I want to git pull origin before running anything on the cluster
 % Usually this would be only a single project directory (at this debugging
 % stage I am gpo-ing some others too,m just to be sure.
@@ -26,15 +26,19 @@ setenv('DJ_USER',djUser)
 setenv('DJ_PASS',djPass)
 % Select which to send to the workers (this will be passed to the Cluster
 % jobs below)
-environmentVariables = {'NS_ROOT','NS_CONDA','DJ_HOST','DJ_USER','DJ_PASS'};
 
+env.NS_ROOT = root;
+env.NSCONDA  = '/home/bart/miniconda3';
+env.DJ_HOST = djHost;
+env.DJ_USER = djUser;
+env.DJ_PASS =djPass;
 
 % It is not always 100% clear to me where Matlab gets its path when started on
 % the cluster. One strategy is to simply add relevant folders to the path,
 % with the AdditionalPaths option (which can be added in the call to
 % script, fun, or parforOptions)
-additionalPaths = {'/home/bart/Documents/github/datajoint-neurostim',...
-                    '/home/bart/Documents/github/datajoint-neurostim/datajoint-matlab',...
+additionalPaths = {'/home/bart/datajoint-neurostim',...
+                    '/home/bart/datajoint-neurostim/datajoint-matlab',...
                     '/home/bart/poissyFit',...
                     '/home/bart/Documents/MATLAB/Add-Ons/Toolboxes/mym/distribution/mexa64',...
                     '/home/bart/Documents/MATLAB/Add-Ons/Toolboxes/compareVersions',...
@@ -44,6 +48,7 @@ additionalPaths = {'/home/bart/Documents/github/datajoint-neurostim',...
 % Tell parforOptions which files to attach (in this case the stateCheck
 % file that we want to run remotely for debugging) and the additional
 % folders to add to the Matlab search path on the cluster
+c = kSlurm('hours',1,'nrWorkers',10,'startupFolder','/home/bart/Documents/MATLAB');
 ops= parforOpts(c,'AttachedFiles','stateCheck','AdditionalPaths',additionalPaths);
 % Start a loop (connecting to two workers) and run the stateCheck function.
 % This is a good way to find out what is happening on the cluster.
@@ -51,7 +56,7 @@ clear info
 parfor (i=1:2,ops)
     info(i)  = stateCheck
 end
-% One thing to note is that the working directory for this operation is now
+% One thing to note is that the working directory for this operation is not
 % the .CurrentFolder set above. In other words, this version ignores that
 % input argument. 
 
@@ -96,11 +101,16 @@ info.pwd  % This one does match the .CurrentFolder and shows the correct DJ_HOST
 % workers is formatted correctly. Especially with arguments in quotes this
 % can get hairy: use a string, not a char, then you can simply copy the
 % code that runs locally and surround it by "".
+% Another tricky thing is that Matlab will try to determine on the client
+% whether this will run. In this example it will look for the populate()
+% function, but it is not smart enough to determine that sbx.Tuning
+nrWorkers = 10;
+c = kSlurm('hours',1,'nrWorkers',nrWorkers, ...
+        'environmentVariables', env);
 expression = "populate(sbx.Tuning,'pcell>0.99','paradigm like ''%ORI%''')";
 job = script(c,expression   , ...
                     'AdditionalPaths',additionalPaths , ...
-                    'EnvironmentVariables',environmentVariables,...
-                    'Pool',2); 
+                    'Pool',nrWorkers-1); 
 % Note that no 'AttachedFiles are necessary (everything is on the cluster
 % already). This will execute the "script"  on 2 workers
 wait(job);

@@ -110,6 +110,12 @@ classdef kSlurm < parallel.cluster.Generic
             % git). Other than that this function works the same as the
             % regular batch and can be given the same input arguments.
             %
+            % Note that 'EnvironmentVariables' passed here are just a list of 
+            % environment variable names ; they are evaluated at
+            % the time of submission, on the client. This differs from the
+            % EnvironmentVariables set at construction of the kSlurm
+            % object; those contain the values.
+            %
             % Retrieve the results of the script with load(job) once the
             % job completes.
             %
@@ -133,7 +139,7 @@ classdef kSlurm < parallel.cluster.Generic
             % To retrieve the output of the parallel workers, use
             % fetchOutputs(job)
             %
-            %   See also parallel.Cluster.batch
+            %   See also parallel.Cluster.batch  kSlurm.script
             arguments
                 c (1,1) kSlurm
                 f (1,1) {mustBeA(f,'function_handle')}    % Function to run on the cluster
@@ -200,8 +206,23 @@ classdef kSlurm < parallel.cluster.Generic
             % host      - The host name or ip address of the cluster [getpref('host')]
             % remoteStorage - The location where job files will be stored [getpref('remoteStorage']
             % matlabRoot  - The Root of the Matlab installation on the cluster. [getpref('matlabRoot')]
-            % sbatchOptions - A string with additional options to pass to sbatch [""]
-            %
+            % sbatchOptions - A string with additional options to pass to
+            % sbatch [""]. This is where you can specify memory request,
+            % gpus etc. See the sbatch documentation for the list of input
+            % arguments.           
+            % environmentVariables - struct with environment variables.
+            %                   Each struct field should contain the value
+            %                   (a string) of the environment variables.
+            %                   These envs will be used for all
+            %                   workers/jobs. The fun/script/parforOpts
+            %                   functions can specify additional
+            %                   environment variables.
+            % startupFolder - Folder (on the cluster) where the
+            % workers will start (using the -sd command line argument). Use
+            % this to execute a startup.m file in that folder (for instance
+            % to set the path).
+            %                   
+            % debug -  Set to true to run in debug mode [false]
             % OUTPUT
             % c -  The kSlurm Cluster object
             %
@@ -232,12 +253,16 @@ classdef kSlurm < parallel.cluster.Generic
                 pk.remoteStorage (1,1) string = kSlurm.getpref('remoteStorage')
                 pk.matlabRoot (1,1) string = kSlurm.getpref('matlabRoot')
                 pk.sbatchOptions (1,1) string =""
+                pk.debug (1,1) logical =false
+                pk.environmentVariables struct = struct([]);
+                pk.startupFolder (1,1) string = ""
             end
             if pk.matlabRoot==""
                 clientVersion = ver('matlab').Release;
                 clientVersion = clientVersion(2:end-1);
                 pk.matlabRoot = sprintf('/opt/sw/packages/MATLAB/%s',clientVersion);
             end
+
             jobName= [getenv('COMPUTERNAME') '-MCP']; % Named the job after the submitting machine
             localStorage = tempdir;
 
@@ -255,8 +280,14 @@ classdef kSlurm < parallel.cluster.Generic
             c.AdditionalProperties.Username = user;
             c.AdditionalProperties.IdentityFile = identityFile;
             c.AdditionalProperties.IdentityFileHasPassphrase = false;
-            % All sbatch options can be added here
+            c.AdditionalProperties.EnableDebug = pk.debug;            
             c.AdditionalProperties.AdditionalSubmitArgs = pk.sbatchOptions + sprintf("-t %02d:%02d:00 --job-name %s",pk.hours, pk.minutes,jobName);
+
+            % kSlurm specific additions - processedin the submitFcns
+            c.UserData  =struct('EnvironmentVariables',pk.environmentVariables, ...
+                                'StartupFolder',pk.startupFolder);
+            
+    
 
             % Try to connect and get some info on the cluster
             fprintf('Trying to connect to  %s ...\n',  c.AdditionalProperties.ClusterHost)
