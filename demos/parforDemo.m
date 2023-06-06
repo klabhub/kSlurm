@@ -18,7 +18,7 @@
 % parfor loop.
 %
 % One advantage is that you can write your code and debug it
-% on your local machine by using a ClsuterOptions object based on the local
+% on your local machine by using a ClusterOptions object based on the local
 % cluster and once everything works and you;re ready to run a big analysis,
 % you can simply specify a cluster-based opts instead. Assuming that the
 % cluster has access to the same code (and data files) that should then

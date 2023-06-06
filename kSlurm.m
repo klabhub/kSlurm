@@ -92,11 +92,24 @@ classdef kSlurm < parallel.cluster.Generic
             % parfor (i=1:10, opts)
             %   dosomething
             % end
+            % NOTE
             % All parameter value pairs that can be specified in the call
-            % to parforOptions can be specified here too.
+            % to parforOptions can be specified here too. 
+            % 
+            % The MaxNumWorkers parameter, however, does not work (only for parpool). 
+            % So the parfor will request as many workers as available in the c
+            % object (So, set  c.NumWorker = nrWorkers , then call
+            % parforOpts). Doing this internally would change the c object
+            % and potentially lead to a lot of confusion.
             %
             % See also parforOptions
-
+            arguments
+                c (1,1) kSlurm              
+            end
+            arguments (Repeating)
+                varargin
+            end
+            
             % Now call the built-in parforOptions with the defaults
             % specified first
             o=  parforOptions(c,c.jobDefaults,varargin{:});
@@ -144,7 +157,7 @@ classdef kSlurm < parallel.cluster.Generic
             arguments
                 c (1,1) kSlurm
                 f (1,1) {mustBeA(f,'function_handle')}    % Function to run on the cluster
-                nout (1,1) double {mustBePositive,mustBeInteger}  % Number of output arguments for the function f
+                nout (1,1) double {mustBeGreaterThanOrEqual(nout,0),mustBeInteger}  % Number of output arguments for the function f
                 args (1,:) cell = {}                    % Cell array with input arguments for the function f
             end
             arguments (Repeating)
@@ -178,7 +191,7 @@ classdef kSlurm < parallel.cluster.Generic
             arguments
                 c (1,1) kSlurm
                 f (1,1) {mustBeA(f,'function_handle')}   % Function to evaluate
-                nout (1,1) double {mustBePositive,mustBeInteger} % Number of output args for f
+                nout (1,1) double {mustBeGreaterThanOrEqual(nout,0),mustBeInteger} % Number of output args for f
                 args (1,:) cell = {}                        % Input args passed to f
             end
             arguments (Repeating)
@@ -203,7 +216,7 @@ classdef kSlurm < parallel.cluster.Generic
             % Hours      - The requested wall time hours    [1]
             % Muinutes   - The requested wall time minutes  [0]
             % NumThreads  - Number threads per worker      [1]
-            % NumWorkers - The maximum number of workers that can be requested [10]
+            % NumWorkers - The maximum number of workers that a job can request [128]
             % Host      - The host name or ip address of the cluster [getpref('host')]
             % RemoteStorage - The location where job files will be stored [getpref('remoteStorage']
             % MatlabRoot  - The Root of the Matlab installation on the cluster. [getpref('matlabRoot')]

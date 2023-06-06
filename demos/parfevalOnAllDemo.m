@@ -24,13 +24,16 @@ tWorkers = results{1};  % 20 nodes time 10 repeats = 200 rows
 tWorkers = mean(tWorkers); % Average over all repeats
 
 % Compare the performance
-figure(1);clf;
+figure(1);
+clf;
+ax1= subplot(1,2,1);
 bar([tClient;tWorkers]');
 xticklabels({'LU','FFT','ODE','Sparse'});
 xlabel("Benchmark type");
 ylabel("Benchmark execution time (seconds)");
 workerNames = strcat("Worker ",string(1:size(tWorkers,1)));
-legend({'Client',workerNames},'Location','bestoutside');
+legend({'Client',workerNames});
+title 'Workers without multithreading' 
 % For interpretation/explanation, see
 % https://www.mathworks.com/help/parallel-computing/benchmark-your-cluster-workers.html
 
@@ -40,6 +43,8 @@ legend({'Client',workerNames},'Location','bestoutside');
 % have 10 threads each
 c=kSlurm('NumWorkers',3,'Hours',0,'Minutes',20,'NumThreads',10);
 job = parfevalOnAll(c,@pbench,1,{5},'Pool',1,'AttachedFiles',{'pbench'});
+wait(job);
+
 results = fetchOutputs(job);
 tWorkers = results{1};
 
@@ -58,11 +63,13 @@ tWorkers = results{1};
 tWorkers = mean(tWorkers);
 
 % Compare the performance
-figure(2);clf;
+
+ax2= subplot(1,2,2);
 bar([tClient;tWorkers]');
 xticklabels({'LU','FFT','ODE','Sparse'});
 xlabel("Benchmark type");
 ylabel("Benchmark execution time (seconds)");
 workerNames = strcat("Worker ",string(1:size(tWorkers,1)));
-legend({'Client',workerNames},'Location','bestoutside');
- 
+
+title 'Workers with multithreading' 
+linkaxes([ax1 ax2])
