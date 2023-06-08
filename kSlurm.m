@@ -12,27 +12,50 @@ classdef kSlurm < parallel.cluster.Generic
     end
 
     properties (SetAccess = public)
-        batchDefaults =struct('CaptureDiary',true,'CurrentFolder','.'); % Batch only
-        jobDefaults = struct('AutoAttachFiles',false,'AutoAddClientPath',false);
+        batchDefaults % Defaults settings for batch mode jobs (fun,script, parfevalOnAll)
+        jobDefaults   % Default settings for client (parfor) and batch mode jobs
 
-
-        gitFolders  (1,:) cell = {}
-    end
-
-    properties (SetAccess =protected)
+        gitFolders  (1,:) cell = {} % Use by gpo to keep remote repositories up to date.
     end
 
 
-    properties (Dependent)
-
-    end
-
-
-    methods
-
-    end
 
     methods (Access=public)
+        function reset(c)
+            % Reset the SSH connection to the cluster. 
+            rc= getRemoteConnection(c);
+            rc.disconnect;
+        end
+
+        function sinfo(c,args)
+            % Call sinfo on the cluster. Command line args can be specified
+            arguments
+                c (1,1) kSlurm
+                args (1,:) {mustBeText} = '--format "%12P %.5a %.10l %.16F %m %20N"'
+            end
+            runCommand(c,['sinfo ' args]);
+        end
+
+        function sacct(c,args)
+            % Call sacct on the cluster. Command line args can be specified
+            % By default only RUNNING jobs for the current Username are
+            % shown.Use args input to change this.
+            arguments
+                c (1,1) kSlurm
+                args (1,:) {mustBeText} = sprintf('--user %s --state RUNNING', c.AdditionalProperties.Username);
+            end
+            runCommand(c,['sacct ' args]);
+        end
+
+
+        function seff(c,args)
+            % Call seff on the first task of the last job to run on the cluster. Command line args can be specified
+            arguments
+                c (1,1) kSlurm
+                args (1,:) {mustBeText} = c.Jobs(end).Tasks(1).SchedulerID
+            end
+            runCommand(c,['seff ' args]);
+        end
 
 
         function [status,stdout] = runCommand(c,cmd)
@@ -94,9 +117,9 @@ classdef kSlurm < parallel.cluster.Generic
             % end
             % NOTE
             % All parameter value pairs that can be specified in the call
-            % to parforOptions can be specified here too. 
-            % 
-            % The MaxNumWorkers parameter, however, does not work (only for parpool). 
+            % to parforOptions can be specified here too.
+            %
+            % The MaxNumWorkers parameter, however, does not work (only for parpool).
             % So the parfor will request as many workers as available in the c
             % object (So, set  c.NumWorker = nrWorkers , then call
             % parforOpts). Doing this internally would change the c object
@@ -104,12 +127,12 @@ classdef kSlurm < parallel.cluster.Generic
             %
             % See also parforOptions
             arguments
-                c (1,1) kSlurm              
+                c (1,1) kSlurm
             end
             arguments (Repeating)
                 varargin
             end
-            
+
             % Now call the built-in parforOptions with the defaults
             % specified first
             o=  parforOptions(c,c.jobDefaults,varargin{:});
@@ -144,7 +167,7 @@ classdef kSlurm < parallel.cluster.Generic
             % By passing the jobDefaults first, and the varargin later,
             % the user can overrule the jobDefaults for a specific job
             defs = cat(2,namedargs2cell(c.batchDefaults),namedargs2cell(c.jobDefaults));
-            job = batch(c,file,defs{:},varargin{:});
+            job = kSlurmBatch(c,file,defs{:},varargin{:});
         end
 
         function job =fun(c,f,nout,args,varargin)
@@ -166,9 +189,19 @@ classdef kSlurm < parallel.cluster.Generic
             % By passing the defaults first, and the varargin later,
             % the user can overrule the defaults for a specific job
             defs = cat(2,namedargs2cell(c.batchDefaults),namedargs2cell(c.jobDefaults));
-            job = batch(c,f,nout,args,defs{:},varargin{:});
+            job = kSlurmBatch(c,f,nout,args,defs{:},varargin{:});
         end
 
+        function p = pool(c,nrWorkers,varargin)
+             arguments
+                c (1,1) kSlurm        
+                nrWorkers (1,1) {mustBePositive,mustBeInteger} = c.NumWorkers
+              end
+              arguments (Repeating)
+                varargin
+              end              
+              p = parpool(c,nrWorkers,'AutoAddClientPath',c.jobDefaults.AutoAddClientPath,varargin{:});
+        end
         function job = parfevalOnAll(c,f,nout,args,varargin)
             % Start a parpool of size 'Pool' on the cluster, and
             % use it to evaluate the function f that many times in
@@ -266,9 +299,16 @@ classdef kSlurm < parallel.cluster.Generic
                 pk.SbatchOptions (1,1) string =""
                 pk.EnvironmentVariables struct = struct([])
                 pk.StartupFolder (1,1) string = ""
-                pk.AdditionalPaths (1,:) cell = {}
                 pk.Debug (1,1) logical =false
                 pk.SInfo (1,1) logical = true
+                % jobDefaults
+                 pk.AutoAttachFiles (1,1) logical  = false;
+                 pk.AutoAddClientPath (1,1) logical = false;
+                 pk.AdditionalPaths (1,:) cell = {}
+             
+                % BatchDefaults
+                pk.CurrentFolder (1,1) string = "."
+                pk.CaptureDiary (1,1) logical = true;
             end
             if pk.MatlabRoot==""
                 clientVersion = ver('matlab').Release;
@@ -294,25 +334,31 @@ classdef kSlurm < parallel.cluster.Generic
             c.AdditionalProperties.IdentityFile = identityFile;
             c.AdditionalProperties.IdentityFileHasPassphrase = false;
             c.AdditionalProperties.EnableDebug = pk.Debug;
-            c.AdditionalProperties.AdditionalSubmitArgs = pk.SbatchOptions + sprintf("-t %02d:%02d:00 --job-name %s",pk.Hours, pk.Minutes,jobName);
+            c.AdditionalProperties.AdditionalSubmitArgs = pk.SbatchOptions + sprintf("   -t %02d:%02d:00 --job-name %s",pk.Hours, pk.Minutes,jobName);
 
             % kSlurm specific additions - processedin the submitFcns
             c.UserData  =struct('EnvironmentVariables',pk.EnvironmentVariables, ...
                 'StartupFolder',pk.StartupFolder);
 
-            if ~isempty(pk.AdditionalPaths)
-                c.jobDefaults.AdditionalPaths = pk.AdditionalPaths;
-            end
             if any(cellfun(@isempty,{c.AdditionalProperties.ClusterHost,c.AdditionalProperties.Username,c.AdditionalProperties.IdentityFile}))
                 error('Host, User, and IdentityFile must be specified. See kSlurm.setpref how to set this up');
             end
+
+            % Storo batc h(Script/fun/parfevalOnAll) defaults
+            c.batchDefaults.CurrentFolder  =pk.CurrentFolder;
+            c.batchDefaults.CaptureDiary = pk.CaptureDiary;
+            % Store defaults that apply to all jobs (including client 
+            % parfor)
+            c.jobDefaults.AdditionalPaths = pk.AdditionalPaths;
+            c.jobDefaults.AutoAddClientPath = pk.AutoAddClientPath;
+            c.jobDefaults.AutoAttachFiles = pk.AutoAttachFiles;
 
             if pk.SInfo
                 % Try to connect and get some info on the cluster
                 fprintf('Trying to connect to  %s ...\n',  c.AdditionalProperties.ClusterHost)
                 fprintf('********************************\n')
                 fprintf('Partition and Node information: \n')
-                runCommand(c,'sinfo --format "%12P %.5a %.10l %.16F %m %20N"');
+                c.sinfo;
                 fprintf('********************************\n')
             end
         end
@@ -327,6 +373,183 @@ classdef kSlurm < parallel.cluster.Generic
             end
         end
     end
+
+    methods (Access=protected)
+        
+        function job = kSlurmBatch( obj, scriptName, varargin )
+            %BATCH Run MATLAB script or function as batch job
+            % This is a ncopy of the Mathworks batch function. It is needed
+            % here to sidestep the issue in the Mathworks code that
+            % AutoAttachFiles =false is ignored. This function only differs
+            % from builtin parallel.cluster.batch by not including
+            % batchHelper2 package (And thereby forcing the use of
+            % batchHelper2 in the kSLurm repository).
+            %
+            %   j = BATCH(cluster, 'aScript') runs the script aScript.m on a worker
+            %   using the identified cluster.  The function returns j, a handle to the
+            %   job object that runs the script. The script file aScript.m is copied
+            %   to the worker. If the cluster object's Profile property is not empty,
+            %   the profile is applied to the job and task that run the script.
+            %
+            %   j = BATCH(cluster, fcn, N, {x1,..., xn}) runs the function specified by
+            %   a function handle or function name, fcn, on a worker using the
+            %   identified cluster.  The function returns j, a handle to the job object
+            %   that runs the function. The function is evaluated with the given
+            %   arguments, x1,...,xn, returning N output arguments.  The function file
+            %   for fcn is copied to the worker.  If the cluster object's Profile
+            %   property is not empty, the profile is applied to the job and task that
+            %   run the function.
+            %
+            %   j = BATCH( ..., P1, V1, ..., Pn, Vn) allows additional parameter-value
+            %   pairs that modify the behavior of the job.  These parameters can be
+            %   used with both functions and scripts, unless otherwise indicated.  The
+            %   accepted parameters are:
+            %
+            %   - 'Workspace' - A 1-by-1 struct to define the workspace on the worker
+            %     just before the script is called. The field names of the struct
+            %     define the names of the variables, and the field values are assigned
+            %     to the workspace variables. By default this parameter has a field for
+            %     every variable in the current workspace where batch is executed. This
+            %     parameter can only be used with scripts.
+            %
+            %   - 'AdditionalPaths' - A string, character vector, string array, or cell array
+            %     of character vectors that defines paths to be added to the workers' MATLAB path
+            %     before the script or function is executed.
+            %
+            %   - 'AttachedFiles' - A string, character vector, string array, or cell array
+            %     of character vectors.  Each entry in the list identifies either a file or a folder,
+            %     which is transferred to the worker.
+            %
+            %   - 'CurrentFolder' - A string or character vector to indicate in what folder the
+            %     script executes. There is no guarantee that this folder exists on the
+            %     worker. The default value for this property is the current folder of
+            %     MATLAB when the batch command is executed. If the value for this
+            %     argument is '.', there is no change in folder before batch execution.
+            %
+            %   - 'CaptureDiary' - A boolean flag to indicate that diary output should be
+            %     retrieved from the script execution or function call.  See the DIARY
+            %     function for how to return this information to the client.  The
+            %     default is true.
+            %
+            %   - 'Pool' - A nonnegative integer or a range specified as a 2-element
+            %     vector of integers that defines the size of the parallel pool to use
+            %     when running the job. If the value is a range, the resulting pool has
+            %     size as large as possible in the range requested. This value
+            %     overrides the NumWorkersRange specified in the profile. The default
+            %     is 0, which causes the script or function to run on only the single
+            %     worker without a pool.
+            %
+            %   - 'EnvironmentVariables' - A character vector, string, string array, or cell
+            %     array of character vectors that defines the names of environment variables
+            %     which will be copied from the client session to the workers.
+            %
+            %   Examples:
+            %   % Run a batch script on a worker
+            %   myCluster = parcluster; % creates the default cluster
+            %   j = batch(myCluster, 'script1');
+            %
+            %   % Run a batch script, capturing the diary, adding a path to the workers
+            %   % and transferring some required files.
+            %   j = batch(myCluster, 'script1', ...
+            %             'AdditionalPaths', '\\Shared\Project1\HelperFiles',...
+            %             'AttachedFiles', {'script1helper1', 'script1helper2'});
+            %   % Wait for the job to finish
+            %   wait(j)
+            %   % Display the diary
+            %   diary(j)
+            %   % Get the results of running the script in this workspace
+            %   load(j)
+            %
+            %   % Run a batch script on a remote cluster using a pool of 8 workers:
+            %   j = batch(myCluster, 'script1', 'Pool', 8);
+            %
+            %   % Run a batch function on a remote cluster that generates a 10-by-10
+            %   % random matrix
+            %   j = batch(myCluster, @rand, 1, {10, 10});
+            %   % Wait for the job to finish
+            %   wait(j)
+            %   % Display the diary
+            %   diary(j)
+            %   % Get the results of running the job into a cell array
+            %   r = fetchOutputs(j)
+            %   % Get the generated random number from r
+            %   r{1}
+            %
+            %   % Run some batch scripts and then use findJob to retrieve the jobs.
+            %   batch(myCluster, 'script1');
+            %   batch(myCluster, 'script2');
+            %   batch(myCluster, 'script3');
+            %   myBatchJobs = findJob(myCluster, 'Username', 'myUsername')
+            %
+            %   See also batch, parcluster, parallel.Cluster/parpool,
+            %            parallel.Cluster/Jobs, parallel.Cluster/findJob,
+            %            parallel.Job/wait, parallel.Job/load, parallel.Job/diary.
+
+            % Copyright 2011-2018 The MathWorks, Inc.
+
+            % BK : NOT importing this so that it uses the near-copy in the kSlurm repo: 
+            % import parallel.internal.cluster.BatchHelper2
+            % All other code is copied from parallel.cluster.batch
+            import parallel.internal.apishared.ProfileConfigHelper
+
+            % Convert any string inputs to character vectors
+            [scriptName, varargin{:}] = convertStringsToChars(scriptName, varargin{:});
+
+            validateattributes( obj, {'parallel.Cluster'}, {'scalar'}, 'batch', 'cluster', 1 );
+
+            parallel.internal.cluster.checkNumberOfArguments('input', 1, inf, ...
+                nargin, 'batch');
+
+            pch = ProfileConfigHelper.buildApi2();
+            % Parse the arguments in
+            try
+                batchHelper = BatchHelper2( pch, scriptName, varargin );
+            catch err
+                % Make all errors appear from batch
+                throw(err);
+            end
+
+            % Deal with the Workspace and configuration.  Set the WorkspaceIn to the
+            % caller if one wasn't supplied.  Note that this code has to exist here
+            % because multiple evalin calls cannot be nested.  This code can't even be
+            % put into a script, because evalin('caller') from the script just gets
+            % this function's workspace and not the caller of this function.  If you
+            % change this code, make sure you change the versions in @jobmanager/batch.m
+            % and batch.m as well.
+            if batchHelper.needsCallerWorkspace
+                where = 'caller';
+                % No workspace supplied - we need to make our own from the calling workspace
+                vars = evalin(where, 'whos');
+                % Loop over each variable in the calling workspace to get its value
+                numVars = numel(vars);
+                varNames = cell(numVars, 1);
+                varValues = cell(numVars, 1);
+                for ii = 1:numVars
+                    varNames{ii} = vars(ii).name;
+                    varValues{ii} = evalin(where, vars(ii).name);
+                end
+                batchHelper.filterAndSetCallerWorkspace(varNames, varValues);
+            end
+
+            % Check that a configuration is not set in the args
+            if ~isempty(batchHelper.Configuration)
+                error(message('parallel:cluster:BatchMethodProfileSpecified'));
+            end
+            batchHelper.Configuration = obj.Profile;
+
+            % Actually run batch on the scheduler
+            try
+                job = batchHelper.doBatch(obj);
+            catch err
+                % Make all errors appear from batch
+                throw(err);
+            end
+        end
+
+
+    end
+
+
     methods (Static)
         function varargout = pfoaWrapper(f,nout,varargin)
             % Not meant to be called directly - only by parfevalOnAll.

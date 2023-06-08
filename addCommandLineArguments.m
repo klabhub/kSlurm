@@ -4,7 +4,7 @@ function args = addCommandLineArguments(cluster,args)
 % Currently only cluster.UserData.StartupFolder is used.
 
 
-if isfield(cluster.UserData,'StartupFolder') && ~isempty(cluster.UserData.StartupFolder)
+if isfield(cluster.UserData,'StartupFolder') && ~(cluster.UserData.StartupFolder=="") 
     args = [args  ' -sd ' char(cluster.UserData.StartupFolder)]; 
 end
 

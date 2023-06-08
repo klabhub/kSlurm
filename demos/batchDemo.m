@@ -38,9 +38,14 @@ job = script(c,'wave','Pool',10);
 % may give a more up to date info. For instance:
 %
 % Run a command remotely , on the cluster
-runCommand(c,sprintf('sacct -j %s',job.Tasks(1).SchedulerID))
-% or
+sacct(c)
+% 
+seff(c)
+% Or if you want mroe control over command line:
 runCommand(c,sprintf('squeue -n %s', c.AdditionalProperties.Username))
+
+% (If you need this routinely, then opening an ssh shell on the head node
+% and running the commands there will be a lot quicker).
 
 % For now, let's wait for the job to complete
 wait(job)

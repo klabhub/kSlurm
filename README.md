@@ -5,7 +5,8 @@ June 2023
 
 This repository was forked from a Mathworks' general purpose repository for SLURM schedulers. The original README is here [README.SLURM.md](./README.SLURM.md).
 
-But, basically, I read that for you and created a convenience wrapper to make the connection to a Cluster (specifically, the Rutgers Amarel HPC cluster) a bit easier.
+But, basically, I read that for you, created a convenience wrapper class to make the connection to a Cluster (specifically, the Rutgers Amarel HPC cluster) a bit easier, and added some 
+missing pieces to the code (such as transmitting environment variables, startup folders, and reusing some settings for all jobs).
 
 What you should do:
 
@@ -37,3 +38,7 @@ Although this package should make it a bit easier to run your analysis code on t
 
 1. Test this exact same code in an interactive session on the cluster.
 1. Once all of this works, go back to the workstation, setup a kSlurm object called c, and use its options in the parfor loop (```ops= parforOpts(c))```) (Note parforOpts, not Options!).
+
+
+## Change Log
+June 2023 -  Initial version.
