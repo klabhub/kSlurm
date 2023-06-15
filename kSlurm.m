@@ -64,7 +64,13 @@ classdef kSlurm < parallel.cluster.Generic
             % stdout = What was written to the command line
             % status = The exit code of the command
             rc = getRemoteConnection(c);
+            try
             [a,b] = runCommand(rc,cmd);
+            catch
+                % Probably a stale connection
+                rc.disconnect
+                fprintf('Failed to run the remote command. Reconnecting. Please try again.')
+            end 
             if nargout==0
                 disp(b)
             elseif nargout >=1
@@ -246,8 +252,8 @@ classdef kSlurm < parallel.cluster.Generic
             % identityFile - Full path SSH Keyfile (without a passphrase) [getpref('identityFile')]
             %
             % Ohter input arguments are optional parameter/value pairs:
-            % Hours      - The requested wall time hours    [1]
-            % Muinutes   - The requested wall time minutes  [0]
+            % Hours      - The requested wall time hours    [0]
+            % Muinutes   - The requested wall time minutes  [10]
             % NumThreads  - Number threads per worker      [1]
             % NumWorkers - The maximum number of workers that a job can request [128]
             % Host      - The host name or ip address of the cluster [getpref('host')]
@@ -289,8 +295,8 @@ classdef kSlurm < parallel.cluster.Generic
             arguments
                 user  = kSlurm.getpref('User')
                 identityFile = kSlurm.getpref('IdentityFile')
-                pk.Hours (1,1) double {mustBeInteger, mustBeInRange(pk.Hours,0,24)} = 1
-                pk.Minutes (1,1) double {mustBeInteger,mustBeInRange(pk.Minutes,0,60)} = 0
+                pk.Hours (1,1) double {mustBeInteger, mustBeInRange(pk.Hours,0,24)} = 0
+                pk.Minutes (1,1) double {mustBeInteger,mustBeInRange(pk.Minutes,0,60)} = 10
                 pk.NumThreads (1,1) double {mustBeInteger,mustBeInRange(pk.NumThreads,1,64)} = 1
                 pk.NumWorkers (1,1) double {mustBeInteger,mustBePositive} = 128
                 pk.Host (1,1) string = kSlurm.getpref('Host');
