@@ -22,6 +22,12 @@ if [ ! -z "${SLURM_ARRAY_TASK_ID}" ] ; then
     export MDCE_TASK_LOCATION="${MDCE_JOB_LOCATION}/Task${TASK_ID}";
 fi
 
+echo  "Set  ulimits"
+# Set the recommended number of file descriptors and user processes for the MATLAB process on the node
+# (https://www.mathworks.com/help/parallel-computing/recommended-system-limits-for-macintosh-and-linux.html)
+ulimit -u 23741
+ulimit -n 4096
+
 # Construct the command to run.
 CMD="\"${PARALLEL_SERVER_MATLAB_EXE}\" ${PARALLEL_SERVER_MATLAB_ARGS}"
 

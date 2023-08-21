@@ -65,11 +65,12 @@ classdef kSlurm < parallel.cluster.Generic
             % status = The exit code of the command
             rc = getRemoteConnection(c);
             try
-            [a,b] = runCommand(rc,cmd);
+                [a,b] = runCommand(rc,cmd);
             catch
                 % Probably a stale connection
                 rc.disconnect
                 fprintf('Failed to run the remote command. Reconnecting. Please try again.')
+                return;
             end 
             if nargout==0
                 disp(b)
@@ -126,10 +127,12 @@ classdef kSlurm < parallel.cluster.Generic
             % to parforOptions can be specified here too.
             %
             % The MaxNumWorkers parameter, however, does not work (only for parpool).
-            % So the parfor will request as many workers as available in the c
-            % object (So, set  c.NumWorker = nrWorkers , then call
-            % parforOpts). Doing this internally would change the c object
-            % and potentially lead to a lot of confusion.
+            % As a consequence, the parfor will try to request a 1000 workers. SLURM
+            % may object to that. To avoid this problem, specify a 'Limit'
+            % m which is the total number of iterations that your parfor
+            % will use. kSlurm will then spread those iterations across
+            % c.NumWorkers (and therefore request at most c.NumWorkers
+            % workers). 
             %
             % See also parforOptions
             arguments
@@ -137,6 +140,14 @@ classdef kSlurm < parallel.cluster.Generic
             end
             arguments (Repeating)
                 varargin
+            end
+            if numel(varargin)>0
+                ix = find(strcmp(varargin(1:2:end),'Limit'));
+                if ~isempty(ix)
+                    limit = varargin{ix+1};
+                    varargin([ix ix+1]) =[];
+                    varargin =cat(2,varargin,{'RangePartitionMethod','fixed','SubrangeSize',ceil(limit/c.NumWorkers)});
+                end
             end
 
             % Now call the built-in parforOptions with the defaults
@@ -319,7 +330,7 @@ classdef kSlurm < parallel.cluster.Generic
             if pk.MatlabRoot==""
                 clientVersion = ver('matlab').Release;
                 clientVersion = clientVersion(2:end-1);
-                pk.NatlabRoot = sprintf('/opt/sw/packages/MATLAB/%s',clientVersion);
+                pk.MatlabRoot = sprintf('/opt/sw/packages/MATLAB/%s',clientVersion);
             end
 
             jobName= [getenv('COMPUTERNAME') '-MCP']; % Named the job after the submitting machine
