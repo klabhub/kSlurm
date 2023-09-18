@@ -47,6 +47,13 @@ fi
 # Unset the hostname variables to ensure they don't get forwarded by mpiexec
 unset HOST HOSTNAME
 
+echo  "Set  ulimits"
+# Set the recommended number of file descriptors and user processes for the MATLAB process on the node
+# (https://www.mathworks.com/help/parallel-computing/recommended-system-limits-for-macintosh-and-linux.html)
+ulimit -u 23741
+ulimit -n 4096
+
+
 # Construct the command to run.
 CMD="\"${FULL_MPIEXEC}\" -bind-to core:${PARALLEL_SERVER_NUM_THREADS} ${MPI_VERBOSE} -n ${PARALLEL_SERVER_TOTAL_TASKS} \
     \"${PARALLEL_SERVER_MATLAB_EXE}\" ${PARALLEL_SERVER_MATLAB_ARGS}"

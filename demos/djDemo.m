@@ -38,11 +38,11 @@ gitFoldersOnAmarel = {'/home/bart/poissyFit',...
 % plus simuliink)
 % For DJ to work, we have to be in the code folder of the project repo that
 % has the +ns/getSchema  ('CurrentFolder')
-c = kSlurm('Minutes',60,...            
+c = kSlurm('Hours',2,...            
             'EnvironmentVariables',env, ...
             'AdditionalPaths',additionalPaths, ...
             'StartupFolder','/home/bart/Documents/MATLAB',...
-            'CurrentFolder','/home/bart/mousetDCS/code');
+            'CurrentFolder','/home/bart/mousetRVS/code');
 
 
 %% Update git
@@ -100,7 +100,7 @@ c.NumWorkers =128; % Set it back to the original maximum.
 % in there somewhere! (Otherwise the code will run on 1 worker, and the
 % other workers will just sit idly waiting for work). 
 nrWorkers = 127;
-expression = "nrWorkers =127; parfor i=1:nrWorkers;dj.conn('165.230.79.13','root','simple',[],[],false);parpopulate(sbx.Tuning,'pcell>0.8','paradigm like ''%ORI%''');end";
+expression = "nrWorkers =127; parfor i=1:nrWorkers;dj.conn('165.230.79.13','root','simple',[],[],false);parpopulate(sbx.Tuning,'pcell>0.7','paradigm like ''%ORI%''');end";
 job = script(c,expression,'Pool',nrWorkers); 
 % This code will finish as soon as the workers have started and then the
 % client is ready for use again. Even exiting the client will not stop the jobs on the cluster. 

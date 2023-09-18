@@ -3,7 +3,7 @@ classdef kSlurm < parallel.cluster.Generic
     % simplify connecting and submitting jobs from a Windows client to a
     % SLURM cluster.
     %
-    %
+    %C:\Users\bartk\OneDrive - Rutgers University\Documents\common\certificates
     % BK - June 2023
 
     properties (Constant)
@@ -21,6 +21,28 @@ classdef kSlurm < parallel.cluster.Generic
 
 
     methods (Access=public)
+        function log(c,jobNr)
+            % Matlab mirrors a log file (containing command line output) created on the cluster 
+            % to the local jobstorage area. This function opens that file in the editor
+            % for inspection.
+            arguments 
+                c (1,1) kSlurm
+                jobNr (1,1) double = c.Jobs(end).ID
+            end
+            fname = ['Job' num2str(jobNr)];
+            if ispc
+                os = 'windows';
+            else
+                os = 'unix';
+            end
+            logFile = fullfile(c.JobStorageLocation.(os),fname,[fname '.log']);
+            if exist(logFile,'file')
+                edit(logFile)
+            else
+                error('Could not find log file %s for job %d',logFile,jobNr);
+            end
+
+        end
         function reset(c)
             % Reset the SSH connection to the cluster. 
             rc= getRemoteConnection(c);
