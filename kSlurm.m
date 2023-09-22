@@ -3,7 +3,6 @@ classdef kSlurm < parallel.cluster.Generic
     % simplify connecting and submitting jobs from a Windows client to a
     % SLURM cluster.
     %
-    %C:\Users\bartk\OneDrive - Rutgers University\Documents\common\certificates
     % BK - June 2023
 
     properties (Constant)
@@ -148,13 +147,10 @@ classdef kSlurm < parallel.cluster.Generic
             % All parameter value pairs that can be specified in the call
             % to parforOptions can be specified here too.
             %
-            % The MaxNumWorkers parameter, however, does not work (only for parpool).
-            % As a consequence, the parfor will try to request a 1000 workers. SLURM
-            % may object to that. To avoid this problem, specify a 'Limit'
-            % m which is the total number of iterations that your parfor
-            % will use. kSlurm will then spread those iterations across
-            % c.NumWorkers (and therefore request at most c.NumWorkers
-            % workers). 
+            % The MaxNumWorkers parameter works only for alocal parpool. 
+            % By default this function will limit to c.NumWorkers (i.e.
+            % the limit in the kSlurm object), but you can change this by
+            % specifying a 'Limit' 
             %
             % See also parforOptions
             arguments
@@ -165,13 +161,14 @@ classdef kSlurm < parallel.cluster.Generic
             end
             if numel(varargin)>0
                 ix = find(strcmp(varargin(1:2:end),'Limit'));
-                if ~isempty(ix)
+                if isempty(ix)
+                    limit = c.NumWorkers;
+                else
                     limit = varargin{ix+1};
                     varargin([ix ix+1]) =[];
-                    varargin =cat(2,varargin,{'RangePartitionMethod','fixed','SubrangeSize',ceil(limit/c.NumWorkers)});
                 end
+                varargin =cat(2,varargin,{'RangePartitionMethod','fixed','SubrangeSize',ceil(limit/c.NumWorkers)});                
             end
-
             % Now call the built-in parforOptions with the defaults
             % specified first
             o=  parforOptions(c,c.jobDefaults,varargin{:});
@@ -610,7 +607,7 @@ classdef kSlurm < parallel.cluster.Generic
             % parfevalOnAll job. (The future is lost)
             future= parfevalOnAll(f,nout,varargin{:});
             if nout >0
-                % This will block on the cluste
+                % This will block on the cluster
                 results= fetchOutputs(future);
                 varargout = cell(1,nout);
                 [varargout{1:nout}] = deal(results);
